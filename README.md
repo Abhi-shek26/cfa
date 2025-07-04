@@ -1,115 +1,145 @@
-# Stock Technical Analysis API
 
-This project is a high-performance backend API for stock technical analysis, built with FastAPI. It features a tiered subscription model, Docker-based deployment, and efficient data processing.
+# 📈 Stock Technical Analysis API
 
-## Architecture Design
+A high-performance, containerized backend built using FastAPI, designed to deliver real-time stock technical indicators via a tiered subscription model. This project was created as a backend developer assignment for **Kalpi Capital**.
 
-### High-Level Component Diagram
+---
 
-The application is containerized using Docker Compose, which orchestrates the different services.
+## 🚀 Features
+
+- ✅ FastAPI backend with Swagger/OpenAPI docs  
+- 🔐 API key-based authentication & tiered authorization  
+- 📊 Calculates technical indicators (SMA, EMA, RSI, MACD, Bollinger Bands)  
+- ⚡ Efficient Parquet-based stock data access  
+- 🐘 PostgreSQL-backed user and subscription system  
+- 🐳 Docker + Docker Compose deployment ready  
+- 🔁 Optional Redis caching for performance (Premium Tier)  
+- 📉 Rate limiting per user tier  
+
+---
+
+## 🏗️ System Architecture
 
 ```
-+-----------------+      +---------------------+      +---------------------+
-|   User Client   |<---->|   FastAPI via     |<---->|  API Service        |
-| (Browser/cURL)  |      |   Uvicorn Server    |      |  (Python/FastAPI)   |
-+-----------------+      +---------------------+      +---------------------+
-                                                          |
-                 (Reads stock data)                       | (User/Subscription data)
-                                                          |
-+--------------------------+                              |
-| stocks_ohlc_data.parquet |<-----------------------------+
-| (Local file)             |
-+--------------------------+                              |
-                                                          |
-                                                          v
-                                                    +---------------------+
-                                                    |  PostgreSQL DB      |
-                                                    |  (User/Tier Data)   |
-                                                    +---------------------+
++--------------+      +-------------+      +-----------------+
+|  User Client | ---> |  FastAPI    | ---> | Parquet File    |
+|  (Browser)   | <--- |  Backend    | ---> | PostgreSQL DB   |
++--------------+      +-------------+      +-----------------+
+                            |
+                         (Redis) - Optional Caching
 ```
 
-### Technology Justification
+- **User Client**: Web client or cURL  
+- **FastAPI**: Processes requests, enforces auth, computes indicators  
+- **Parquet File**: Stores OHLC stock data (~3 years)  
+- **PostgreSQL**: Tracks users, API keys, usage quotas  
+- **Redis** *(optional)*: Caches repeated responses (Premium)
 
-*   **FastAPI**: Chosen for its high performance, asynchronous capabilities, and automatic generation of interactive API documentation (Swagger UI), which is ideal for building modern, fast APIs.
-*   **Pandas/Pandas-TA**: Used for their powerful and efficient data manipulation and analysis capabilities. `Pandas-TA` simplifies the calculation of technical indicators.
-*   **Docker & Docker Compose**: Selected to create a reproducible, isolated, and portable environment. This ensures that the application and its database run consistently across any machine, simplifying setup and deployment.
-*   **PostgreSQL**: A robust, open-source relational database ideal for storing structured user and subscription data.
-*   **Uvicorn**: A lightning-fast ASGI server, required to run the asynchronous FastAPI application.
+---
 
-### Key Architectural Decisions
+## 🛠️ Tech Stack
 
-*   **Data Loading Strategy**: The `stocks_ohlc_data.parquet` file is loaded into memory on the first request and then cached using Python's `@lru_cache`. This "load-once, read-many" approach drastically reduces I/O and improves response times for subsequent requests.
-*   **Subscription Model Implementation**: Tiered access is managed through FastAPI's dependency injection system. A custom dependency authenticates the user via their API key and then a separate function authorizes their access to specific indicators and data date ranges based on their subscription tier.
-*   **Scalability**: The application is horizontally scalable. You can run multiple instances of the API container behind a load balancer. The use of a connection-pooled PostgreSQL database also ensures that database connections are managed efficiently under load.
-*   **Security**: Authentication is handled via API keys, which are checked against the database for each request. Authorization logic is strictly enforced to prevent users from accessing data outside their subscription plan.
+| Area            | Tool/Tech         |
+|-----------------|------------------|
+| Backend         | FastAPI (Python) |
+| Data Handling   | Pandas, pandas-ta |
+| Database        | PostgreSQL        |
+| Caching         | Redis *(optional)* |
+| Deployment      | Docker, Docker Compose |
+| Auth Mechanism  | API Keys          |
+| API Docs        | Swagger UI        |
 
-## Setup and Running Instructions (Docker)
+---
 
-These instructions will guide you through setting up and running the project locally using Docker.
+## 🎯 Subscription Model
 
-### Prerequisites
+| Tier     | Indicators            | Data Range       | Daily Limit |
+|----------|------------------------|------------------|-------------|
+| Free     | SMA, EMA               | Last 3 months    | 50 requests |
+| Pro      | SMA, EMA, RSI, MACD    | Last 1 year      | 500 requests |
+| Premium  | All (incl. Bollinger)  | Full 3 years     | Unlimited   |
 
-*   **Docker Desktop**: Ensure you have Docker and Docker Compose installed and running on your system.
+---
 
-### Running the Application
+## 🧪 API Endpoints
 
-1.  **Clone the Repository**
-    ```
-    git clone <your-repository-url>
-    cd <repository-name>
-    ```
+| Route                              | Access       | Description                         |
+|-----------------------------------|--------------|-------------------------------------|
+| `/indicators/sma/{symbol}`        | Free+        | Simple Moving Average               |
+| `/indicators/ema/{symbol}`        | Free+        | Exponential Moving Average          |
+| `/indicators/rsi/{symbol}`        | Pro+         | Relative Strength Index             |
+| `/indicators/macd/{symbol}`       | Pro+         | MACD Indicator                      |
+| `/indicators/bollinger/{symbol}`  | Premium only | Bollinger Bands                     |
 
-2.  **Create the Environment File**
-    Create a file named `.env` in the root of the project and copy the contents from `.env.example`. You can modify the default database credentials if you wish.
+> 🔍 Docs at: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-3.  **Build and Run with Docker Compose**
-    Open a terminal in the project root and run the following command:
-    ```
-    docker-compose up --build
-    ```
-    This command will build the Docker images and start the FastAPI application and the PostgreSQL database.
+---
 
-4.  **Access the API**
-    *   The API will be available at `http://localhost:8000`.
-    *   The interactive documentation (Swagger UI) is available at `http://localhost:8000/docs`.
+## ⚙️ Setup Instructions
 
-5.  **Test the Tiers**
-    *   Use a database tool like pgAdmin or DBeaver to connect to the local PostgreSQL database (host: `localhost`, port: `5432`, credentials from your `.env` file).
-    *   Manually add users with different API keys and subscription tiers (`free`, `pro`, `premium`) to the `users` table.
-    *   Use the Swagger UI to test the API with the different keys and verify that the permissions and rate limits are working correctly.
+### 1. Prerequisites
 
-## Testing Strategy
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- Git
 
-Our testing approach combines unit and integration tests to ensure correctness and reliability.
+### 2. Clone & Configure
 
-*   **Unit Tests**: These would focus on the pure business logic, primarily the technical indicator calculation functions in `app/services/analysis.py`. Each function would be tested with known input data to verify that the output is mathematically correct.
-
-*   **Integration Tests**: These would be written using a testing framework like `pytest` and FastAPI's `TestClient`. The goal is to test the complete request-response cycle. This includes:
-    *   Testing successful authentication with a valid API key.
-    *   Testing failed authentication with an invalid key (`401` error).
-    *   Testing the authorization logic for each subscription tier (e.g., ensuring a `free` user cannot access a `pro` indicator, resulting in a `403` error).
-    *   Verifying that rate limiting works correctly (`429` error).
+```bash
+git clone https://github.com/Abhi-shek26/cfa
+cd cfa
 ```
 
-### 3. Leverage and Enhance API Documentation
+### 3. Create `.env`
 
-This deliverable is already mostly complete thanks to FastAPI's powerful features.
+```env
+POSTGRES_USER=myuser
+POSTGRES_PASSWORD=mypassword
+POSTGRES_DB=stock_analysis_db
+DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
+STOCK_DATA_PATH="stocks_ohlc_data.parquet"
+```
 
-*   **Primary Documentation**: Your API documentation is the interactive Swagger UI located at `http://localhost:8000/docs`. This is the deliverable.
-*   **Enhance with Examples**: You can make the documentation even better by adding descriptions and examples directly in your code. FastAPI will automatically pick them up.
+### 4. Start the App
 
-    **Example in `app/routers/stocks.py`:**
-    ```python
-    @router.get(
-        "/{indicator}/{symbol}",
-        response_model=stock_schema.IndicatorResponse,
-        summary="Get Technical Indicator Data", # Add a summary
-        description="Calculates a technical indicator for a given stock symbol over a date range determined by the user's subscription tier." # Add a description
-    )
-    def get_indicator_data(
-        # ... function parameters
-    ):
-        # ...
-    ```
+```bash
+docker-compose up --build
+```
 
-By following these steps, you will have a complete, well-documented, and professional project that fulfills all the requirements of the assignment.
+### 5. Access the API
+
+- API: [http://localhost:8000](http://localhost:8000)  
+- Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+---
+
+## 🧪 Testing Strategy
+
+We used both manual and programmatic strategies to ensure functionality and reliability.
+
+### ✅ Manual Tests
+
+- Tested all endpoints via Swagger UI with valid and invalid API keys.
+- Verified tier-based restrictions:
+  - Free users restricted from premium/pro indicators.
+  - Pro users blocked from Bollinger Bands.
+- Simulated rate-limiting logic using looped requests.
+
+### ✅ Indicator Validation
+
+- Compared indicator outputs against Pandas-TA reference calculations for known stocks like `AAPL` and `TSLA`.
+
+### 🔮 Future Testing
+
+- Introduce `pytest`-based unit + integration test suite.
+- Use mocked PostgreSQL + Redis containers for CI testing.
+
+---
+
+## 🔒 Security & Scalability
+
+- 🔐 API Key verification per request  
+- ⚖️ Tier enforcement with clear `401`, `403`, and `429` status codes  
+- 🔁 Caching for repeated requests (Premium)  
+- 📈 Horizontally scalable with containerized deployment  
+
+---
