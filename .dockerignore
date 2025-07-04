@@ -1,0 +1,12 @@
+# Ignore virtual environment and cache
+venv/
+.venv/
+__pycache__/
+
+# Ignore IDE and OS-specific files
+.vscode/
+.idea/
+.DS_Store
+
+# Ignore environment files (these will be managed by Docker Compose)
+.env
